@@ -1,4 +1,4 @@
-# Change the number of prismmq consumers and restart the prismmq service.
+# Change the prismmq configuration and stop, start, or restart the prismmq service.
 # By Zach Cutberth
 
 from configobj import ConfigObj
@@ -6,7 +6,11 @@ import sys
 import win32serviceutil
 import time
 
-consumers = sys.argv[1]
+setting_name = sys.argv[1]
+
+setting_value = sys.argv[2]
+
+service_action = sys.argv[3]
 
 def getServiceStatus(serviceName):
     try:
@@ -35,11 +39,35 @@ def checkStatus(service, action):
             currentStatus = getServiceStatus(service)
             time.sleep(1)
 
-def update_consumers(consumers):
+def update_consumers(setting_value):
     prismmq_ini = ConfigObj('c:\\ProgramData\\RetailPro\\Server\\Conf\\PrismMQService.ini')
 
-    prismmq_ini['PRISM']['D2DRECVTHREADCNT'] = consumers
+    prismmq_ini['PRISM']['D2DRECVTHREADCNT'] = setting_value
     prismmq_ini.write()
+
+def update_loglevel(setting_value):
+    prismmq_ini = ConfigObj('c:\\ProgramData\\RetailPro\\Server\\Conf\\PrismMQService.ini')
+
+    prismmq_ini['LOG']['LogLevel'] = setting_value
+    prismmq_ini.write()
+
+def stop_prismmq():
+    status = getServiceStatus('PrismMQService')
+    if status != 'Stopped':
+        try:
+            win32serviceutil.StopService('PrismMQService')
+        except:
+            pass
+        checkStatus('PrismMQService', 'stop')
+
+def start_prismmq():
+    status = getServiceStatus('PrismMQService')
+    if status != 'Running':
+        try:
+            win32serviceutil.StartService('PrismMQService')
+        except:
+            pass
+        checkStatus('PrismMQService', 'start')
 
 def restart_prismmq():
     status = getServiceStatus('PrismMQService')
@@ -62,5 +90,18 @@ def restart_prismmq():
             pass
         checkStatus('PrismMQService', 'start')
 
-update_consumers(consumers)
-restart_prismmq()
+if setting_name == 'consumers':
+    update_consumers(setting_value)
+
+if setting_name == 'loglevel':
+    update_loglevel(setting_value)
+
+if service_action == 'restart':
+    restart_prismmq()
+
+if service_action == 'stop':
+    stop_prismmq()
+
+if service_action == 'start':
+    start_prismmq()
+
